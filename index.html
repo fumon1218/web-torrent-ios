@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Web Torrent Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/webtorrent@latest/webtorrent.min.js"></script>
+    <style>
+        :root {
+            --bg: #000000;
+            --accent: #00ff88;
+            --card: #111111;
+            --text: #ffffff;
+            --dim: #888888;
+        }
+
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .input-box {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 24px;
+            border: 1px solid #222;
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            background: #000;
+            border: 1px solid #333;
+            color: white;
+            padding: 15px;
+            border-radius: 14px;
+            font-size: 14px;
+            outline: none;
+            margin-bottom: 12px;
+        }
+
+        button {
+            width: 100%;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 15px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .status-panel {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 24px;
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #222;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--dim);
+        }
+
+        .file-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .file-item {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-name {
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        .download-btn {
+            background: #333;
+            color: var(--accent);
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .download-btn.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .tip {
+            font-size: 11px;
+            color: #555;
+            text-align: center;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Web Torrent</h1>
+
+        <div class="input-box">
+            <input type="text" id="magnet" placeholder="마그넷 링크를 붙여넣으세요">
+            <button onclick="startDownload()">다운로드 시작</button>
+        </div>
+
+        <div id="statusPanel" class="status-panel">
+            <div id="torrentName" style="font-weight: 700; margin-bottom: 5px;">준비 중...</div>
+            <div class="progress-bar">
+                <div id="fill" class="progress-fill"></div>
+            </div>
+            <div class="stats">
+                <span id="percent">0%</span>
+                <span id="speed">0 MB/s</span>
+            </div>
+            
+            <div style="margin-top: 20px; font-size: 12px; color: var(--dim); margin-bottom: 10px;">파일 목록 (완료 후 다운로드 가능)</div>
+            <div id="files" class="file-list"></div>
+        </div>
+
+        <div class="tip">
+            아이폰에서는 브라우저 탭을 열어두어야 다운로드가 진행됩니다.<br>
+            파일이 100% 완료되면 '저장' 버튼이 활성화됩니다.
+        </div>
+    </div>
+
+    <script>
+        const client = new WebTorrent();
+
+        function startDownload() {
+            const magnet = document.getElementById('magnet').value;
+            if (!magnet) return;
+
+            document.getElementById('statusPanel').style.display = 'block';
+            document.getElementById('files').innerHTML = '';
+
+            client.add(magnet, function (torrent) {
+                document.getElementById('torrentName').innerText = torrent.name;
+
+                torrent.on('download', function (bytes) {
+                    document.getElementById('fill').style.width = (torrent.progress * 100) + '%';
+                    document.getElementById('percent').innerText = Math.round(torrent.progress * 100) + '%';
+                    document.getElementById('speed').innerText = (client.downloadSpeed / 1024 / 1024).toFixed(2) + ' MB/s';
+                });
+
+                // 파일 목록 렌더링
+                torrent.files.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `
+                        <div class="file-name">${file.name}</div>
+                        <a id="btn-${file.name}" class="download-btn disabled">대기 중</a>
+                    `;
+                    document.getElementById('files').appendChild(item);
+
+                    // 완료 시 다운로드 링크 생성
+                    torrent.on('done', () => {
+                        file.getBlobURL((err, url) => {
+                            if (err) return;
+                            const btn = document.getElementById(`btn-${file.name}`);
+                            btn.href = url;
+                            btn.download = file.name;
+                            btn.innerText = '저장';
+                            btn.className = 'download-btn';
+                        });
+                    });
+                });
+            });
+        }
+    </script>
+</body>
+</html>
