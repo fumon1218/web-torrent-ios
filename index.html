@@ -26,6 +26,26 @@
         .container {
             max-width: 500px;
             margin: 0 auto;
+            display: none; /* 기본적으로 숨김 */
+        }
+
+        /* 로그인 화면 스타일 */
+        #loginOverlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 300px;
+            text-align: center;
         }
 
         h1 {
@@ -146,7 +166,16 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- 로그인 화면 -->
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h1 style="font-size: 20px;">🔒 Protected</h1>
+            <input type="password" id="pwInput" placeholder="Password">
+            <button onclick="checkLogin()">Unlock</button>
+        </div>
+    </div>
+
+    <div class="container" id="mainContainer">
         <h1>Web Torrent</h1>
 
         <div class="input-box">
@@ -177,6 +206,24 @@
     <script>
         const client = new WebTorrent();
 
+        // 암호 확인
+        function checkLogin() {
+            const input = document.getElementById('pwInput').value;
+            if (input === 'admin3642!') {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainContainer').style.display = 'block';
+                sessionStorage.setItem('isLoggedIn', 'true');
+            } else {
+                alert('비밀번호가 틀렸습니다.');
+            }
+        }
+
+        // 세션 유지 확인
+        if (sessionStorage.getItem('isLoggedIn') === 'true') {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'block';
+        }
+
         function startDownload() {
             const magnet = document.getElementById('magnet').value;
             if (!magnet) return;
@@ -199,7 +246,7 @@
                     item.className = 'file-item';
                     item.innerHTML = `
                         <div class="file-name">${file.name}</div>
-                        <a id="btn-${file.name}" class="download-btn disabled">대기 중</a>
+                        <a id="btn-${file.name.replace(/\s+/g, '-')}" class="download-btn disabled">대기 중</a>
                     `;
                     document.getElementById('files').appendChild(item);
 
@@ -207,7 +254,7 @@
                     torrent.on('done', () => {
                         file.getBlobURL((err, url) => {
                             if (err) return;
-                            const btn = document.getElementById(`btn-${file.name}`);
+                            const btn = document.getElementById(`btn-${file.name.replace(/\s+/g, '-')}`);
                             btn.href = url;
                             btn.download = file.name;
                             btn.innerText = '저장';
@@ -218,5 +265,8 @@
             });
         }
     </script>
+</body>
+</html>
+
 </body>
 </html>
