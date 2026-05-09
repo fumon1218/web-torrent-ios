@@ -225,11 +225,28 @@
         }
 
         function startDownload() {
-            const magnet = document.getElementById('magnet').value;
+            let magnet = document.getElementById('magnet').value.trim();
             if (!magnet) return;
+
+            // 브라우저 환경(WebRTC)에서는 일반 UDP/HTTP 트래커 접속이 불가능하므로, 
+            // WebTorrent 전용 WebSocket 트래커를 강제로 추가해줍니다.
+            const trackers = [
+                'wss://tracker.btorrent.xyz',
+                'wss://tracker.openwebtorrent.com',
+                'wss://tracker.webtorrent.dev'
+            ];
+            trackers.forEach(t => {
+                if (!magnet.includes(encodeURIComponent(t))) {
+                    magnet += `&tr=${encodeURIComponent(t)}`;
+                }
+            });
 
             document.getElementById('statusPanel').style.display = 'block';
             document.getElementById('files').innerHTML = '';
+            document.getElementById('torrentName').innerText = '피어 찾는 중... (시간이 걸릴 수 있습니다)';
+            document.getElementById('fill').style.width = '0%';
+            document.getElementById('percent').innerText = '0%';
+            document.getElementById('speed').innerText = '0 MB/s';
 
             client.add(magnet, function (torrent) {
                 document.getElementById('torrentName').innerText = torrent.name;
@@ -265,8 +282,5 @@
             });
         }
     </script>
-</body>
-</html>
-
 </body>
 </html>
